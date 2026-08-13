@@ -1,1 +1,37 @@
+# --- Credenziali / segreti ---
 secrets.h
+**/secrets.h
+config.h
+**/config.h
+
+# --- Arduino IDE ---
+*.hex
+*.bin
+*.elf
+*.map
+build/
+.vscode/
+*.o
+
+# --- PlatformIO ---
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# --- Node-RED ---
+node-red-flows/node_modules/
+node-red-flows/.node-red/
+node-red-flows/flows_cred.json
+*.log
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor ---
+.idea/
+*.swp
+*~
