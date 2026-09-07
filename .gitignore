@@ -20,11 +20,10 @@ build/
 .clang_complete
 .gcc-flags.json
 
-# --- Node-RED ---
-node-red-flows/node_modules/
-node-red-flows/.node-red/
-node-red-flows/flows_cred.json
-*.log
+# --- Docker (Node-RED data) ---
+docker/node-red/data/node_modules/
+docker/node-red/data/flows_cred.json
+docker/node-red/data/.config.*
 
 # --- Logica (Node.js/Jest) ---
 logica/node_modules/
