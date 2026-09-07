@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-logica:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: logica
+
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: logica/package-lock.json
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      - name: Esegui i test con coverage
+        run: npm run test:coverage
+
+      - name: Carica il report di coverage come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: logica/coverage/

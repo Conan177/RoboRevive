@@ -26,6 +26,10 @@ node-red-flows/.node-red/
 node-red-flows/flows_cred.json
 *.log
 
+# --- Logica (Node.js/Jest) ---
+logica/node_modules/
+logica/coverage/
+
 # --- Sistema operativo ---
 .DS_Store
 Thumbs.db
