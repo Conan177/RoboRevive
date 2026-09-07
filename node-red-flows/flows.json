@@ -1,0 +1,524 @@
+[
+    {
+        "id": "f5ef8d3456b31c29",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "7d9350dca3f1809f",
+        "type": "tab",
+        "label": "ReqAPIMeteo",
+        "disabled": false,
+        "info": "",
+        "env": [
+            {
+                "name": "LAT",
+                "value": "44.85064",
+                "type": "str"
+            },
+            {
+                "name": "LON",
+                "value": "11.76544",
+                "type": "str"
+            }
+        ]
+    },
+    {
+        "id": "e28683cf.db011",
+        "type": "tab",
+        "label": "HeartBeatESPGateway",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "fe4ba2895c19b14a",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "5",
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "3867cb4959bd6d5c",
+        "type": "ui_tab",
+        "name": "Meteo",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "252c61decbaffe6e",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "f45b15a532faaa07",
+        "type": "ui_group",
+        "name": "Stato Meteo",
+        "tab": "3867cb4959bd6d5c",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "34b818f766c81f27",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.1.80",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "5",
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "dd1450dc268f93d1",
+        "type": "ui_tab",
+        "name": "Gateway",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "7709bc74da4dbff9",
+        "type": "ui_group",
+        "name": "HeartBeat",
+        "tab": "dd1450dc268f93d1",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "284415067bf90c04",
+        "type": "mqtt in",
+        "z": "f5ef8d3456b31c29",
+        "name": "",
+        "topic": "test/heartbeat",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "fe4ba2895c19b14a",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 450,
+        "y": 260,
+        "wires": [
+            [
+                "439f2fba920c9847"
+            ]
+        ]
+    },
+    {
+        "id": "439f2fba920c9847",
+        "type": "debug",
+        "z": "f5ef8d3456b31c29",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "ae679d71baeb1fa5",
+        "type": "inject",
+        "z": "7d9350dca3f1809f",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1800",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 240,
+        "wires": [
+            [
+                "71ba61687b90cf7b"
+            ]
+        ]
+    },
+    {
+        "id": "5822878d751296a4",
+        "type": "http request",
+        "z": "7d9350dca3f1809f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 490,
+        "y": 240,
+        "wires": [
+            [
+                "3713f2f1a3971690",
+                "800a972b696e0c8e"
+            ]
+        ]
+    },
+    {
+        "id": "3713f2f1a3971690",
+        "type": "function",
+        "z": "7d9350dca3f1809f",
+        "name": "Controllo_Meteo",
+        "func": "const { valutaCondizioni } = global.get('Controllo_Meteo');\n\nconst orari = msg.payload.hourly.time;\nconst temperature = msg.payload.hourly.temperature_2m;\nconst pioggia = msg.payload.hourly.precipitation;\n\nmsg.payload = valutaCondizioni(orari, temperature, pioggia);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 240,
+        "wires": [
+            [
+                "4826b5f37f7ca2cc",
+                "2e496b174a76f708"
+            ]
+        ]
+    },
+    {
+        "id": "4826b5f37f7ca2cc",
+        "type": "debug",
+        "z": "7d9350dca3f1809f",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "800a972b696e0c8e",
+        "type": "debug",
+        "z": "7d9350dca3f1809f",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "url",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "03ec4fe117d8948e",
+        "type": "ui_text",
+        "z": "7d9350dca3f1809f",
+        "group": "f45b15a532faaa07",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "condizioniOk",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": true,
+        "font": "Arial,Arial,Helvetica,sans-serif",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1090,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "2e496b174a76f708",
+        "type": "function",
+        "z": "7d9350dca3f1809f",
+        "name": "CondizioneOk",
+        "func": "\nmsg.payload = msg.payload.condizioniOk\n    ? \"✅ Condizioni OK\"\n    : \"⚠️ Sconsigliato uscire:\" + String(msg.payload.motivi[0]);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 240,
+        "wires": [
+            [
+                "03ec4fe117d8948e",
+                "991964b25ce6dd8a"
+            ]
+        ]
+    },
+    {
+        "id": "991964b25ce6dd8a",
+        "type": "mqtt out",
+        "z": "7d9350dca3f1809f",
+        "name": "",
+        "topic": "Meteo",
+        "qos": "2",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "34b818f766c81f27",
+        "x": 1090,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "71ba61687b90cf7b",
+        "type": "function",
+        "z": "7d9350dca3f1809f",
+        "name": "Build URL",
+        "func": "const lat = env.get('LAT');\nconst lon = env.get('LON');\nnode.warn(\"LAT letto: [\" + env.get('LAT') + \"]\");\nnode.warn(\"LON letto: [\" + env.get('LON') + \"]\");\nmsg.url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation&models=italia_meteo_arpae_icon_2i&timezone=auto&forecast_days=3`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 300,
+        "wires": [
+            [
+                "5822878d751296a4"
+            ]
+        ]
+    },
+    {
+        "id": "11069fa55125cfe1",
+        "type": "mqtt in",
+        "z": "e28683cf.db011",
+        "name": "",
+        "topic": "tagliaerba/gateway/heartbeat",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "34b818f766c81f27",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 520,
+        "y": 360,
+        "wires": [
+            [
+                "b3886831ec2dd4c7",
+                "e0b8a3d325a20ab0"
+            ]
+        ]
+    },
+    {
+        "id": "b3886831ec2dd4c7",
+        "type": "ui_text",
+        "z": "e28683cf.db011",
+        "group": "7709bc74da4dbff9",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "GatewayHeartBeat",
+        "format": "{{msg.payload.status}} {{msg.payload.uptime}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 850,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "e0b8a3d325a20ab0",
+        "type": "debug",
+        "z": "e28683cf.db011",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "0a38ef4cbd620cc9",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    }
+]

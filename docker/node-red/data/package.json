@@ -1,0 +1,8 @@
+{
+  "name": "roborevive-node-red-data",
+  "description": "User directory Node-RED per il deployment di valutazione (Docker) di RoboRevive",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-red-dashboard": "^3.6.6"
+  }
+}

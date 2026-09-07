@@ -20,7 +20,13 @@ build/
 .clang_complete
 .gcc-flags.json
 
-# --- Docker (Node-RED data) ---
+# --- Node-RED (deployment reale) ---
+node-red-flows/node_modules/
+node-red-flows/.node-red/
+node-red-flows/flows_cred.json
+*.log
+
+# --- Docker (Node-RED, deployment di valutazione) ---
 docker/node-red/data/node_modules/
 docker/node-red/data/flows_cred.json
 docker/node-red/data/.config.*
