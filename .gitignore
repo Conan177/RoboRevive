@@ -4,6 +4,10 @@ secrets.h
 config.h
 **/config.h
 
+# --- Termux config (credenziali reali) ---
+termux-config/passwd
+termux-config/mosquitto.conf
+
 # --- Arduino IDE ---
 *.hex
 *.bin

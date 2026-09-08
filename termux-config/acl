@@ -1,0 +1,9 @@
+user gateway
+topic write tagliaerba/gateway/#
+topic read tagliaerba/gateway/cmd/#
+
+user nodered
+topic readwrite tagliaerba/#
+
+user admin
+topic readwrite #
