@@ -4,6 +4,9 @@
 
 - [x] Autenticazione MQTT (username/password, `allow_anonymous false`)
 - [x] ACL sui topic per utente
+
+> Nota: auth + ACL replicate anche lato deployment Docker (config via env/file montati, credenziali non committate) — da fare dopo il completamento della VPN lato Termux. VPN/DDNS/port forwarding restano solo lato Termux/rete reale, non pertinenti al deployment Docker (ambiente di valutazione locale, non esposto).
+
 - [ ] Accesso remoto via VPN
 - [ ] TLS/MQTTS (da valutare necessità rispetto a VPN)
 - [ ] Rate limiting / blocco tentativi falliti ripetuti
@@ -37,3 +40,5 @@ Note:
 1. Accesso remoto sicuro via VPN (WireGuard) verso la rete di casa, invece di port forwarding diretto delle porte MQTT/Node-RED
 2. TLS/MQTTS (porta 8883) — da valutare se aggiungere in ogni caso o se ridondante rispetto al tunnel VPN per uso personale
 3. Hardening minore: cambio porte di default, rate limiting su tentativi di connessione falliti ripetuti
+
+> Auth + ACL da replicare lato Docker una volta completata la VPN (vedi nota in "Stato attuale").
