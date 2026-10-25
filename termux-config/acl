@@ -1,5 +1,5 @@
 user gateway
-topic write tagliaerba/gateway/#
+topic write tagliaerba/+/+
 topic read tagliaerba/gateway/cmd/#
 
 user nodered
