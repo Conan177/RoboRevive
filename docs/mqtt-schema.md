@@ -69,7 +69,7 @@ Payload:
 
 ### `tagliaerba/gateway/status` *(Last Will and Testament)*
 
-Pubblicato da: **broker Mosquitto**, automaticamente, quando la connessione TCP del Gateway cade in modo anomalo (crash, perdita WiFi, spegnimento improvviso — non una disconnessione pulita)
+Pubblicato da: **broker Mosquitto** (`offline`, come Last Will) quando la connessione TCP del Gateway cade in modo anomalo (crash, perdita WiFi, spegnimento improvviso — non una disconnessione pulita); dal **Nodo Gateway** stesso (`online`), subito dopo ogni connessione riuscita
 Sottoscritto da: Node-RED (rilevamento offline affidabile, non basato solo su timeout dell'heartbeat)
 QoS: 1 · Retain: Sì
 
@@ -82,9 +82,10 @@ Payload:
 
 | Campo | Tipo | Descrizione |
 |---|---|---|
-| `status` | string | Sempre `"offline"` — pubblicato dal broker per conto del client, non dal Gateway stesso |
+| `status` | string | `"offline"` (LWT, pubblicato dal broker per conto del client) oppure `"online"` (pubblicato dal Gateway dopo la connessione) |
 
 **Implementazione lato ESP32**: configurare con `client.setWill(topic, payload, qos, retain)` **prima** della chiamata a `client.connect()`. Da implementare — al momento il Gateway non ha ancora un LWT configurato, il rilevamento offline si basa solo sull'assenza di heartbeat per >60s.
+**Messaggio `online`**: il retained `offline` del LWT resta sul broker finché qualcuno non lo sostituisce. Quindi, subito dopo `client.connect()`, il Gateway pubblica `{"status":"online"}` su questo topic con retain attivo e QoS 1. Da implementare insieme al LWT.
 
 ---
 
@@ -126,7 +127,7 @@ QoS: 0 · Retain: Sì (utile sapere l'ultimo stato senza aspettare il prossimo c
 
 #### `tagliaerba/base/nfc-rilevato`
 
-Pubblicato da: **Nodo Base**, quando il lettore rileva il tag NFC sul robot
+Pubblicato da: **Nodo Gateway**, per conto del Nodo Base (che invia l'evento via ESP-NOW), quando il lettore rileva il tag NFC sul robot
 QoS: 1 · Retain: valutare (vedi tabella sopra)
 
 ```json
@@ -145,7 +146,7 @@ QoS: 1 · Retain: valutare (vedi tabella sopra)
 
 #### `tagliaerba/base/ambiente`
 
-Pubblicato da: **Nodo Base**, periodicamente (frequenza da definire, es. ogni 5 min)
+Pubblicato da: **Nodo Gateway**, per conto del Nodo Base (via ESP-NOW), periodicamente (frequenza da definire, es. ogni 5 min)
 QoS: 0 · Retain: No
 
 ```json
@@ -161,14 +162,14 @@ QoS: 0 · Retain: No
 |---|---|---|
 | `temp_aria` | number | Temperatura aria in °C (sensore SHT31) |
 | `umidita_aria` | number | Umidità relativa aria in % (sensore SHT31) |
-| `temp_terreno` | number | Temperatura terreno in °C (sonda DS18B20) |
+| `temp_terreno` | number | **Da rivedere**: la sonda DS18B20 non è disponibile (il sensore capacitivo v1.2 misura l'umidità, non la temperatura). Possibile sostituzione con `umidita_terreno` |
 | `timestamp` | string (ISO 8601) | Istante di lettura |
 
 ### Fase 4 — Rilevamento partenza (audio)
 
 #### `tagliaerba/robot/partenza-rilevata`
 
-Pubblicato da: **Nodo Robot**, quando il pattern audio del motore in avvio viene riconosciuto
+Pubblicato da: **Nodo Gateway**, per conto del Nodo Robot (via ESP-NOW), quando il pattern audio del motore in avvio viene riconosciuto
 QoS: 1 · Retain: No
 
 ```json
@@ -187,7 +188,7 @@ QoS: 1 · Retain: No
 
 #### `tagliaerba/robot/rssi`
 
-Pubblicato da: **Nodo Robot**, periodicamente, con letture RSSI dai nodi/ancore visibili
+Pubblicato da: **Nodo Gateway**, per conto del Nodo Robot (via ESP-NOW), periodicamente, con letture RSSI dai nodi/ancore visibili
 QoS: 0 · Retain: No
 
 ```json
@@ -208,11 +209,11 @@ Ogni client si connette con credenziali dedicate (username/password via `mosquit
 
 | Utente | Write | Read |
 |---|---|---|
-| `gateway` | `tagliaerba/gateway/#` | `tagliaerba/gateway/cmd/#` |
+| `gateway` | `tagliaerba/+/+` | `tagliaerba/gateway/cmd/#` |
 | `nodered` | `tagliaerba/#` | `tagliaerba/#` |
 | `admin` | `#` | `#` |
 
-Principio applicato: minimo privilegio per ruolo — es. `gateway` non ha permesso di lettura sui propri topic di pubblicazione (non gli serve), solo sul proprio namespace comandi futuro (`cmd/#`), non ancora utilizzato ma già riservato per coerenza.
+Principio applicato: minimo privilegio per ruolo. Il `gateway` è l'unico client MQTT e ripubblica anche i dati di Nodo Base e Nodo Robot (ricevuti via ESP-NOW), quindi può scrivere su `tagliaerba/+/+` (topic a due livelli: `gateway/*`, `base/*`, `robot/*`). Il wildcard a un solo livello esclude i topic `{nodo}/cmd/{comando}`, che il Gateway può solo leggere (sul proprio namespace `cmd/#`, non ancora utilizzato ma già riservato per coerenza).
 
 > Fase esplorativa — schema soggetto a revisione in base ai risultati dei primi test.
 
@@ -220,7 +221,7 @@ Principio applicato: minimo privilegio per ruolo — es. `gateway` non ha permes
 
 ## Note generali
 
-- Autenticazione MQTT attiva (`allow_anonymous false`, `password_file` con utenti dedicati per ruolo: `gateway`, `nodered`, `admin`) e ACL sui topic configurate (vedi tabella permessi sotto). Prossimo passo: accesso remoto sicuro via VPN, prima di qualsiasi esposizione a internet.
+- Autenticazione MQTT attiva (`allow_anonymous false`, `password_file` con utenti dedicati per ruolo: `gateway`, `nodered`, `admin`) e ACL sui topic configurate (vedi tabella permessi sotto). Accesso remoto tramite VPN WireGuard già attivo.
 - Nessun meccanismo di deduplicazione/idempotenza sui messaggi ancora implementato — da considerare se si osservano messaggi duplicati in condizioni di rete instabile
 - QoS e retain ora documentati per categoria (vedi tabelle sopra) — da rivedere singolarmente in fase di implementazione di ciascun topic pianificato
 - Last Will and Testament (LWT) documentato per il Gateway (`gateway/status`) ma non ancora implementato lato firmware — da aggiungere quando si rivede lo sketch del Gateway
