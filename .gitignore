@@ -35,6 +35,9 @@ docker/node-red/data/node_modules/
 docker/node-red/data/flows_cred.json
 docker/node-red/data/.config.*
 
+# --- Docker (Mosquitto, credenziali) ---
+docker/.env
+
 # --- Logica (Node.js/Jest) ---
 logica/node_modules/
 logica/coverage/
