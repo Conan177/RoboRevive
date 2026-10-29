@@ -36,3 +36,75 @@ jobs:
         with:
           name: coverage-report
           path: logica/coverage/
+
+  test-simulatore:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: docker/simulatore
+
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: docker/simulatore/package-lock.json
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      - name: Esegui i test unitari e property-based con coverage
+        run: npm run test:coverage
+
+      - name: Carica il report di coverage come artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-report-simulatore
+          path: docker/simulatore/coverage/
+
+  test-integrazione-simulatore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: docker/simulatore
+
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: docker/simulatore/package-lock.json
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      # I runner ubuntu-latest hanno Docker: testcontainers avvia Mosquitto da solo.
+      - name: Esegui i test di integrazione con Mosquitto reale
+        run: npm run test:integration
+
+  smoke-test-simulatore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: docker/simulatore
+
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v5
+
+      - name: Build dell'immagine e smoke test (broker, simulatore, heartbeat)
+        run: bash smoke-test.sh

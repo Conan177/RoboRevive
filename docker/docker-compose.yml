@@ -6,9 +6,14 @@ services:
       - "127.0.0.1:1883:1883"
     env_file: .env
     command: >
-      sh -c "mosquitto_passwd -b -c /tmp/passwd gateway \"$$MQTT_PASS_GATEWAY\" &&
+      sh -c  "rm -f /tmp/passwd &&
+             mosquitto_passwd -b -c /tmp/passwd gateway \"$$MQTT_PASS_GATEWAY\" &&
              mosquitto_passwd -b /tmp/passwd nodered \"$$MQTT_PASS_NODERED\" &&
              mosquitto_passwd -b /tmp/passwd admin \"$$MQTT_PASS_ADMIN\" &&
+             chown mosquitto:mosquitto /tmp/passwd &&
+             cp /mosquitto/config/acl /tmp/acl &&
+             chown mosquitto:mosquitto /tmp/acl &&
+             chmod 0700 /tmp/acl &&
              exec mosquitto -c /mosquitto/config/mosquitto.conf"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
@@ -25,6 +30,17 @@ services:
     volumes:
       - ./node-red/data:/data
       - ../logica:/data/logica:ro
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+  
+  simulatore:
+    build: ./simulatore
+    container_name: roborevive-simulatore
+    env_file: .env
+    environment:
+      MQTT_HOST: mosquitto
+      INTERVALLO_HEARTBEAT_S: 30
     depends_on:
       - mosquitto
     restart: unless-stopped

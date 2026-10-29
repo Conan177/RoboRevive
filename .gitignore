@@ -41,6 +41,8 @@ docker/.env
 # --- Logica (Node.js/Jest) ---
 logica/node_modules/
 logica/coverage/
+docker/simulatore/node_modules/
+docker/simulatore/coverage/
 
 # --- Sistema operativo ---
 .DS_Store
