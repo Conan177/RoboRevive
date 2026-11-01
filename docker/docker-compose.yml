@@ -23,6 +23,7 @@ services:
     restart: unless-stopped
 
   node-red:
+    build: ./node-red 
     image: nodered/node-red:latest
     container_name: roborevive-node-red
     ports:
