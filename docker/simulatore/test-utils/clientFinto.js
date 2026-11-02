@@ -6,6 +6,7 @@ function creaClientFinto() {
   const client = new EventEmitter();
   client.connected = false;
   client.publish = jest.fn();
+  client.subscribe = jest.fn();
   client.end = jest.fn();
   return client;
 }

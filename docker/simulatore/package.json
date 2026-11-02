@@ -19,7 +19,9 @@
     ],
     "collectCoverageFrom": [
       "creaGateway.js",
-      "gateway.js"
+      "gateway.js",
+      "scenari.js",
+      "simulazione.js"
     ],
     "coverageThreshold": {
       "global": {

@@ -1,10 +1,11 @@
-// Test dell'entry point: verifica solo come le variabili d'ambiente
-// arrivano a creaGateway (la logica è testata in creaGateway.test.js).
+// Test dell'entry point: verifica solo come le variabili d'ambiente arrivano a
+// creaGateway e come il client viene collegato agli scenari (la logica è testata altrove).
 jest.mock('mqtt', () => ({ connect: jest.fn() }));
 jest.mock('./creaGateway', () => ({
   ...jest.requireActual('./creaGateway'),
-  creaGateway: jest.fn(),
+  creaGateway: jest.fn(() => ({ client: 'client-finto' })),
 }));
+jest.mock('./simulazione', () => ({ collegaScenari: jest.fn() }));
 
 const CHIAVI = ['MQTT_HOST', 'MQTT_PASS_GATEWAY', 'INTERVALLO_HEARTBEAT_S'];
 const ORIGINALI = Object.fromEntries(CHIAVI.map((k) => [k, process.env[k]]));
@@ -17,16 +18,17 @@ function impostaEnv(valori) {
   });
 }
 
-// Importa gateway.js in un registro di moduli isolato e restituisce
-// il mock di creaGateway di quel registro.
+// Importa gateway.js in un registro di moduli isolato e restituisce i mock di quel registro.
 function avviaEntryPoint(env) {
   impostaEnv(env);
   let creaGatewayMock;
+  let collegaScenariMock;
   jest.isolateModules(() => {
     creaGatewayMock = require('./creaGateway').creaGateway;
+    collegaScenariMock = require('./simulazione').collegaScenari;
     require('./gateway');
   });
-  return creaGatewayMock;
+  return { creaGatewayMock, collegaScenariMock };
 }
 
 afterEach(() => {
@@ -36,25 +38,25 @@ afterEach(() => {
 
 describe('variabili d\'ambiente passate alla factory', () => {
   test('passa MQTT_HOST come host', () => {
-    const mock = avviaEntryPoint({ MQTT_HOST: 'broker.test' });
-    expect(mock).toHaveBeenCalledWith(expect.objectContaining({ host: 'broker.test' }));
+    const { creaGatewayMock } = avviaEntryPoint({ MQTT_HOST: 'broker.test' });
+    expect(creaGatewayMock).toHaveBeenCalledWith(expect.objectContaining({ host: 'broker.test' }));
   });
 
   test('passa MQTT_PASS_GATEWAY come password', () => {
-    const mock = avviaEntryPoint({ MQTT_PASS_GATEWAY: 'segreta' });
-    expect(mock).toHaveBeenCalledWith(expect.objectContaining({ password: 'segreta' }));
+    const { creaGatewayMock } = avviaEntryPoint({ MQTT_PASS_GATEWAY: 'segreta' });
+    expect(creaGatewayMock).toHaveBeenCalledWith(expect.objectContaining({ password: 'segreta' }));
   });
 
   test('passa la libreria mqtt come mqttLib', () => {
-    const mock = avviaEntryPoint({});
-    expect(mock).toHaveBeenCalledWith(
+    const { creaGatewayMock } = avviaEntryPoint({});
+    expect(creaGatewayMock).toHaveBeenCalledWith(
       expect.objectContaining({ mqttLib: expect.objectContaining({ connect: expect.any(Function) }) })
     );
   });
 
   test('crea il gateway una sola volta', () => {
-    const mock = avviaEntryPoint({});
-    expect(mock).toHaveBeenCalledTimes(1);
+    const { creaGatewayMock } = avviaEntryPoint({});
+    expect(creaGatewayMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -68,7 +70,24 @@ describe('intervallo di heartbeat da INTERVALLO_HEARTBEAT_S', () => {
     // Comportamento attuale, probabile bug: nessun controllo sul segno (vedi report).
     ['valore negativo "-5": usa -5 s senza validazione', '-5', -5],
   ])('%s', (_nome, valore, atteso) => {
-    const mock = avviaEntryPoint({ INTERVALLO_HEARTBEAT_S: valore });
-    expect(mock).toHaveBeenCalledWith(expect.objectContaining({ intervalloS: atteso }));
+    const { creaGatewayMock } = avviaEntryPoint({ INTERVALLO_HEARTBEAT_S: valore });
+    expect(creaGatewayMock).toHaveBeenCalledWith(expect.objectContaining({ intervalloS: atteso }));
+  });
+});
+
+describe('collegamento degli scenari di simulazione', () => {
+  test('collega gli scenari al client del gateway', () => {
+    const { collegaScenariMock } = avviaEntryPoint({});
+    expect(collegaScenariMock).toHaveBeenCalledWith(expect.objectContaining({ client: 'client-finto' }));
+  });
+
+  test('usa Date.now come sorgente del tempo', () => {
+    const { collegaScenariMock } = avviaEntryPoint({});
+    expect(collegaScenariMock).toHaveBeenCalledWith(expect.objectContaining({ ora: Date.now }));
+  });
+
+  test('usa Math.random come sorgente casuale', () => {
+    const { collegaScenariMock } = avviaEntryPoint({});
+    expect(collegaScenariMock).toHaveBeenCalledWith(expect.objectContaining({ casuale: Math.random }));
   });
 });

@@ -130,4 +130,5 @@ module.exports = {
   attendiPuback,
   attendiMessaggio,
   raccogliMessaggi,
+  connettiOsservatore,
 };
