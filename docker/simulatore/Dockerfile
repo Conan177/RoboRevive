@@ -6,4 +6,5 @@ COPY gateway.js ./
 COPY creaGateway.js ./
 COPY scenari.js ./
 COPY simulazione.js ./
+COPY risolviIntervalloS.js ./
 CMD ["node", "gateway.js"]

@@ -1,4 +1,4 @@
-const { creaGateway } = require('./creaGateway');
+const { creaGateway, LIMITI_INTERVALLO  } = require('./creaGateway');
 const { creaMqttFinto } = require('./test-utils/clientFinto');
 
 // Valori scritti in chiaro di proposito: i test verificano il contratto MQTT,
@@ -31,6 +31,7 @@ const pubblicazioniSu = (topic) =>
 beforeEach(() => {
   jest.useFakeTimers();
   jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -84,19 +85,27 @@ describe('configurazione della connessione', () => {
 });
 
 describe('periodo del timer di heartbeat', () => {
-  test('imposta il timer a intervalloS secondi espressi in millisecondi', () => {
+  test.each([
+    [10, 10000],
+    ['10', 10000],
+    [undefined, 30000],
+    ['1', 1000],
+    ['300', 300000],
+    ['301', 30000],
+    ['0', 30000],
+  ])('con intervalloS %p il timer è di %p ms', (intervalloS, atteso) => {
     const spy = jest.spyOn(global, 'setInterval');
-    avviaGateway({ intervalloS: 10 });
-    expect(spy).toHaveBeenCalledWith(expect.any(Function), 10000);
+    avviaGateway({ intervalloS });
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), atteso);
   });
 
   // Documenta il comportamento attuale: nessuna validazione dell'intervallo.
   // Un delay negativo viene poi trattato da Node come 1 ms (heartbeat continui):
   // possibile bug, vedi report. Il timer finto non viene fatto avanzare di proposito.
-  test('passa a setInterval un delay negativo se intervalloS è negativo', () => {
-    const spy = jest.spyOn(global, 'setInterval').mockImplementation(() => 0);
+  test('con intervalloS negativo il timer usa il default di 30 s', () => {
+    const spy = jest.spyOn(global, 'setInterval');
     avviaGateway({ intervalloS: -5 });
-    expect(spy).toHaveBeenCalledWith(expect.any(Function), -5000);
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 30000);
   });
 });
 
@@ -264,5 +273,32 @@ describe('stop', () => {
     avviaGateway();
     gateway.stop();
     expect(client().end).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('avvisi per intervallo non valido', () => {
+  test('con intervalloS non valido emette un avviso', () => {
+    avviaGateway({ intervalloS: 'abc' });
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
+
+  test('con intervalloS valido non emette avvisi', () => {
+    avviaGateway({ intervalloS: '10' });
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  test('con intervalloS assente non emette avvisi', () => {
+    avviaGateway({ intervalloS: undefined });
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('limiti dell\'intervallo di heartbeat', () => {
+  test('il default non è sotto il minimo', () => {
+    expect(LIMITI_INTERVALLO.defaultS).toBeGreaterThanOrEqual(LIMITI_INTERVALLO.minS);
+  });
+
+  test('il default non è sopra il massimo', () => {
+    expect(LIMITI_INTERVALLO.defaultS).toBeLessThanOrEqual(LIMITI_INTERVALLO.maxS);
   });
 });

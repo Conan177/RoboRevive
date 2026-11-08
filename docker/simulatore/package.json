@@ -21,7 +21,8 @@
       "creaGateway.js",
       "gateway.js",
       "scenari.js",
-      "simulazione.js"
+      "simulazione.js",
+      "risolviIntervalloS.js"
     ],
     "coverageThreshold": {
       "global": {

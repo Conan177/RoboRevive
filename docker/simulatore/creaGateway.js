@@ -1,12 +1,17 @@
 // Logica del simulatore del gateway, senza effetti collaterali all'import.
 // Il comportamento è quello del vecchio gateway.js: cambia solo il fatto che
 // la connessione parte quando si chiama creaGateway(), non al require.
+const { risolviIntervalloS } = require('./risolviIntervalloS');
+LIMITI_INTERVALLO = { defaultS: 30, minS: 1, maxS: 300 }
 
-function calcolaIntervalloS(valoreGrezzo) {
-  return Number(valoreGrezzo) || 30;
-}
 
 function creaGateway({ host, porta = 1883, password, intervalloS, mqttLib }) {
+
+  const intervallo = risolviIntervalloS(intervalloS, LIMITI_INTERVALLO);
+  if (intervallo.usatoDefault && intervalloS !== undefined) {
+    console.warn(`Intervallo heartbeat non valido (${intervalloS}): uso ${intervallo.valore} s`);
+  }
+
   const client = mqttLib.connect(`mqtt://${host}:${porta}`, {
     username: 'gateway',
     password: password,
@@ -45,7 +50,7 @@ function creaGateway({ host, porta = 1883, password, intervalloS, mqttLib }) {
   });
 
   // Timer creato una sola volta, fuori da 'connect'
-  const timer = setInterval(pubblicaHeartbeat, intervalloS * 1000);
+  const timer = setInterval(pubblicaHeartbeat, intervallo.valore * 1000);
 
   client.on('error', (err) => console.error('Errore MQTT:', err.message));
 
@@ -58,4 +63,4 @@ function creaGateway({ host, porta = 1883, password, intervalloS, mqttLib }) {
   return { client, pubblicaHeartbeat, stop };
 }
 
-module.exports = { creaGateway, calcolaIntervalloS };
+module.exports = { creaGateway, LIMITI_INTERVALLO };

@@ -61,14 +61,12 @@ describe('variabili d\'ambiente passate alla factory', () => {
 });
 
 describe('intervallo di heartbeat da INTERVALLO_HEARTBEAT_S', () => {
+  // gateway.js non interpreta il valore: la validazione sta in creaGateway.
   test.each([
-    ['variabile assente: usa 30 s', undefined, 30],
-    ['valore valido "10": usa 10 s', '10', 10],
-    ['valore non numerico "abc": usa 30 s', 'abc', 30],
-    // Il numero 0 è falsy, quindi `Number('0') || 30` ricade sul default: comportamento attuale.
-    ['valore "0": usa 30 s (0 è falsy)', '0', 30],
-    // Comportamento attuale, probabile bug: nessun controllo sul segno (vedi report).
-    ['valore negativo "-5": usa -5 s senza validazione', '-5', -5],
+    ['variabile assente: passa undefined', undefined, undefined],
+    ['valore "10": passa la stringa "10"', '10', '10'],
+    ['valore "abc": passa la stringa "abc"', 'abc', 'abc'],
+    ['valore "-5": passa la stringa "-5"', '-5', '-5'],
   ])('%s', (_nome, valore, atteso) => {
     const { creaGatewayMock } = avviaEntryPoint({ INTERVALLO_HEARTBEAT_S: valore });
     expect(creaGatewayMock).toHaveBeenCalledWith(expect.objectContaining({ intervalloS: atteso }));

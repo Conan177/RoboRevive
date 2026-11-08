@@ -1,7 +1,7 @@
 // ⚠️ Se i test sono in una sottocartella, aggiorna SOLO queste tre righe di import
 // (es. '../creaGateway' e '../test-utils/clientFinto').
 const fc = require('fast-check');
-const { creaGateway, calcolaIntervalloS } = require('./creaGateway');
+const { creaGateway } = require('./creaGateway');
 const { creaMqttFinto } = require('./test-utils/clientFinto');
 
 const TOPIC_HEARTBEAT = 'tagliaerba/gateway/heartbeat';
@@ -11,57 +11,6 @@ const TOPIC_HEARTBEAT = 'tagliaerba/gateway/heartbeat';
 const proprietaValida = (proprieta, parametri) =>
   expect(() => fc.assert(proprieta, parametri)).not.toThrow();
 
-// ---------------------------------------------------------------------------
-// calcolaIntervalloS (funzione pura: nessun timer, nessun mock)
-// ---------------------------------------------------------------------------
-describe('calcolaIntervalloS (proprietà)', () => {
-  // Stringhe il cui valore numerico non è né positivo né negativo: NaN, 0, -0.
-  const stringheNonNumericheOZero = fc.oneof(
-    fc.string().filter((s) => !(Number(s) > 0 || Number(s) < 0)),
-    fc.constantFrom('', ' ', '  ', '\n', '0', '-0', '+0', '0.0', '0e5', 'abc', 'NaN')
-  );
-
-  // Intervalli che setInterval gestisce davvero: da 1 ms a 2^31-1 ms (circa 24,8 giorni).
-  const intervalloValido = fc.double({ min: 0.001, max: 2147483, noNaN: true });
-
-  test('una stringa non numerica o uguale a zero ricade sul default di 30 s', () => {
-    proprietaValida(
-      fc.property(stringheNonNumericheOZero, (s) => calcolaIntervalloS(s) === 30)
-    );
-  });
-
-  test('un numero positivo valido viene restituito invariato', () => {
-    proprietaValida(
-      fc.property(intervalloValido, (x) => calcolaIntervalloS(String(x)) === x)
-    );
-  });
-
-  test('un valore undefined ricade sul default di 30 s', () => {
-    expect(calcolaIntervalloS(undefined)).toBe(30);
-  });
-
-  // --- Comportamento ATTUALE problematico, documentato con test.failing ----
-  // Il test descrive il comportamento DESIDERATO. Oggi fallisce (e quindi test.failing
-  // risulta verde) perché manca la validazione. Quando la aggiungerai, questi test
-  // diventeranno rossi: togli `.failing` e restano come test di regressione.
-  test.failing('un numero negativo dovrebbe ricadere sul default di 30 s', () => {
-    proprietaValida(
-      fc.property(
-        fc.double({ max: -Number.MIN_VALUE, noNaN: true }),
-        (x) => calcolaIntervalloS(String(x)) === 30
-      )
-    );
-  });
-
-  test.failing('un intervallo oltre il limite di setInterval dovrebbe ricadere su 30 s', () => {
-    proprietaValida(
-      fc.property(
-        fc.double({ min: 2147484, noNaN: true }),
-        (x) => calcolaIntervalloS(String(x)) === 30
-      )
-    );
-  });
-});
 
 // ---------------------------------------------------------------------------
 // pubblicaHeartbeat
@@ -147,6 +96,49 @@ describe('heartbeat (proprietà)', () => {
         const effettivi = client.publish.mock.calls.filter(([t]) => t === TOPIC_HEARTBEAT).length;
         return effettivi === attesi;
       })
+    );
+  });
+});
+
+describe('intervallo passato a setInterval (proprietà)', () => {
+  const inputQualsiasi = fc.oneof(
+    fc.string(),
+    fc.integer(),
+    fc.double({ noNaN: false, noDefaultInfinity: false }),
+    fc.integer({ min: -10, max: 5000 }).map(String),
+    fc.constant(undefined)
+  );
+  let spiaSetInterval;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    spiaSetInterval = jest.spyOn(global, 'setInterval');
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  // mockClear a ogni giro: senza, mock.calls[0] sarebbe sempre il primo input generato.
+  function msPassatiASetInterval(intervalloS) {
+    spiaSetInterval.mockClear();
+    const { mqttLib } = creaMqttFinto();
+    const gateway = creaGateway({ host: 'h', password: 'p', intervalloS, mqttLib });
+    gateway.stop();
+    return spiaSetInterval.mock.calls[0][1];
+  }
+
+  test('setInterval non riceve mai meno del minimo', () => {
+    proprietaValida(
+      fc.property(inputQualsiasi, (x) => msPassatiASetInterval(x) >= 1000)
+    );
+  });
+
+  test('setInterval non riceve mai più del massimo', () => {
+    proprietaValida(
+      fc.property(inputQualsiasi, (x) => msPassatiASetInterval(x) <= 300000)
     );
   });
 });
