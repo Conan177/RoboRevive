@@ -28,7 +28,7 @@ function creaGateway({ host, porta = 1883, password, intervalloS, mqttLib }) {
     const uptime = Math.floor(process.uptime());
     client.publish(
       'tagliaerba/gateway/heartbeat',
-      JSON.stringify({ status: 'online', uptime: uptime }),
+      JSON.stringify({ status: 'online', uptime: uptime, intervalloS: intervallo.valore }),
       { qos: 0, retain: false }
     );
   }

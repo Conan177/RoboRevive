@@ -245,6 +245,18 @@ describe('pubblicaHeartbeat', () => {
     jest.advanceTimersByTime(10000);
     expect(pubblicazioniSu(TOPIC_HEARTBEAT)).toHaveLength(1);
   });
+
+  test.each([
+    [10, 10],
+    ['10', 10],
+    [undefined, 30],
+    ['abc', 30],
+  ])('con intervalloS %p l\'heartbeat dichiara intervalloS %p', (intervalloS, atteso) => {
+    avviaGateway({ intervalloS });
+    client().connected = true;
+    gateway.pubblicaHeartbeat();
+    expect(JSON.parse(client().publish.mock.calls[0][1]).intervalloS).toBe(atteso);
+  });
 });
 
 describe('evento error', () => {

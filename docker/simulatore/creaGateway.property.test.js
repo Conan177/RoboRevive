@@ -57,10 +57,11 @@ describe('heartbeat (proprietà)', () => {
     );
   });
 
-  test('il payload contiene sempre e solo le chiavi status e uptime', () => {
+  test('il payload contiene sempre e solo le chiavi status, uptime e intervalloS', () => {
     proprietaValida(
       fc.property(uptimeArbitrario, (u) =>
-        Object.keys(payloadHeartbeatConUptime(u)).sort().join(',') === 'status,uptime'
+        Object.keys(payloadHeartbeatConUptime(u)).sort().join(',') ===
+        ['status', 'uptime', 'intervalloS'].sort().join(',')
       )
     );
   });
