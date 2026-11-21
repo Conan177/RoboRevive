@@ -6,7 +6,8 @@ module.exports = {
     // così Node-RED richiama sempre lo stesso codice testato, indipendentemente
     // da dove gira (telefono o container).
     functionGlobalContext: {
-        Controllo_Meteo: require('/data/logica/allerta-meteo.js')
+        Controllo_Meteo: require('/data/logica/allerta-meteo.js'),
+        Stato_Gateway: require('/data/logica/stato-gateway.js')
         // aggiungere qui i prossimi moduli man mano che vengono creati, es.:
         // rilevamentoRientro: require('/data/logica/rilevamento-rientro.js')
     }
