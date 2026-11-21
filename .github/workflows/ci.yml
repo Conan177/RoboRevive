@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Permessi minimi per tutto il workflow: i job che ne servono di più li dichiarano da soli.
+permissions:
+  contents: read
+
 jobs:
   test-logica:
     runs-on: ubuntu-latest
@@ -21,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: logica/package-lock.json
 
@@ -32,6 +36,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Carica il report di coverage come artifact
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: coverage-report
@@ -108,3 +113,43 @@ jobs:
 
       - name: Build dell'immagine e smoke test (broker, simulatore, heartbeat)
         run: bash smoke-test.sh
+
+  # Continuous Delivery: se tutti i test passano su main, l'immagine del simulatore
+  # viene pubblicata (versionata con lo SHA del commit). Il rilascio sul target
+  # resta manuale: docker compose pull && docker compose up -d.
+  pubblica-immagine:
+    needs:
+      - test-logica
+      - test-simulatore
+      - test-integrazione-simulatore
+      - smoke-test-simulatore
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v5
+
+      # GHCR accetta solo nomi di immagine in minuscolo.
+      - name: Calcola il nome dell'immagine
+        run: echo "IMMAGINE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/roborevive-simulatore" >> "$GITHUB_ENV"
+
+      - name: Login al registro GitHub (GHCR)
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push dell'immagine del simulatore
+        uses: docker/build-push-action@v7
+        with:
+          context: docker/simulatore
+          push: true
+          tags: |
+            ${{ env.IMMAGINE }}:latest
+            ${{ env.IMMAGINE }}:${{ github.sha }}
