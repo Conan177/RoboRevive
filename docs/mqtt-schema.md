@@ -53,7 +53,7 @@ Il flag `retain` fa sì che il broker conservi l'ultimo messaggio pubblicato su 
 
 ### `tagliaerba/gateway/heartbeat`
 
-Pubblicato da: **Nodo Gateway**, subito dopo la connessione e poi ogni 30 secondi (configurabile nel simulatore con `INTERVALLO_HEARTBEAT_S`)
+Pubblicato da: **Nodo Gateway**, subito dopo la connessione e poi intervalloS secondi (default 30, configurabile nel simulatore con INTERVALLO_HEARTBEAT_S)
 Sottoscritto da: Node-RED (dashboard "Gateway online/offline")
 QoS: 0 · Retain: No
 
@@ -71,6 +71,9 @@ Payload:
 |---|---|---|
 | `status` | string | Sempre `"online"` quando pubblicato |
 | `uptime` | number (intero ≥ 0) | Secondi trascorsi dall'ultimo avvio (nel simulatore: del processo; sull'ESP32: del dispositivo) |
+| `intervalloS` |	number (intero, 1-300) | Intervallo in secondi tra due heartbeat, quello effettivamente in uso dopo la validazione. Il firmware reale dovrà pubblicare lo stesso campo |
+
+Intervallo configurabile. INTERVALLO_HEARTBEAT_S è accettato solo se è una stringa di sole cifre decimali con valore compreso tra 1 e 300 (inclusi). Qualunque altro valore (assente, non numerico, negativo, decimale, fuori dai limiti) ripiega sul default di 30 s, con un avviso nei log se la variabile era presente.
 
 ### `tagliaerba/gateway/status` *(Last Will and Testament)*
 
@@ -90,7 +93,7 @@ Payload:
 | `status` | string | `"offline"` (LWT, pubblicato dal broker per conto del client) oppure `"online"` (pubblicato dal Gateway dopo la connessione) |
 
 **Implementazione**: il simulatore Docker registra il Last Will alla connessione e pubblica `online` con retain e QoS 1; il comportamento è verificato anche contro un broker Mosquitto reale (disconnessione non pulita → `offline` retained).
-**Implementazione lato ESP32**: configurare con `client.setWill(topic, payload, qos, retain)` **prima** della chiamata a `client.connect()`, poi pubblicare `{"status":"online"}` su questo topic con retain attivo e QoS 1 subito dopo `client.connect()` (il retained `offline` resta sul broker finché qualcuno non lo sostituisce). **Da implementare nel firmware**: al momento il Gateway fisico non ha un LWT configurato, il rilevamento offline si basa solo sull'assenza di heartbeat per >60s.
+**Implementazione lato ESP32**: configurare con `client.setWill(topic, payload, qos, retain)` **prima** della chiamata a `client.connect()`, poi pubblicare `{"status":"online"}` su questo topic con retain attivo e QoS 1 subito dopo `client.connect()` (il retained `offline` resta sul broker finché qualcuno non lo sostituisce). **Da implementare nel firmware**: al momento il Gateway fisico non ha un LWT configurato, sull’assenza di heartbeat per più di 3 × intervalloS.
 
 ### `tagliaerba/base/nfc-rilevato`
 
@@ -149,6 +152,18 @@ QoS: 1 · Retain: No
 |---|---|---|
 | `confidenza` | number (0-1) | Punteggio di confidenza del rilevamento (utile soprattutto se si passa a TinyML). Il simulatore genera valori tra 0.7 e 0.99 |
 | `timestamp` | string (ISO 8601) | Istante del rilevamento |
+
+---
+
+## Stato del gateway (logica Node-RED)
+
+Stati: sconosciuto (iniziale), online, sospetto, offline.
+
+- Status offline (Last Will): porta sempre a offline.
+- Status online: porta a online e assume intervalloS = 300, perché l’intervallo reale non è ancora noto.
+- Heartbeat: da sconosciuto, online o sospetto porta a online e aggiorna intervalloS se il valore dichiarato è un intero tra 1 e 300 (altrimenti tiene il precedente). Da offline non cambia nulla: solo uno status online riporta online un gateway offline.
+- Controllo periodico: se lo stato è online e dall’ultimo contatto sono passati più di 3 × intervalloS secondi, lo stato diventa sospetto. A esattamente 3 intervalli è ancora online.
+- Limite noto: se Node-RED si riavvia con il gateway già acceso, riceve lo status online retained e usa 300 s (soglia 900 s) fino al primo heartbeat utile.
 
 ---
 
