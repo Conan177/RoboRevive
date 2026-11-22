@@ -54,3 +54,5 @@ desktop.ini
 *.swp
 *~
 coverage/
+
+node_modules/
