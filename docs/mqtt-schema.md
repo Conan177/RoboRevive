@@ -26,7 +26,7 @@ Ogni payload è un oggetto JSON. Ogni messaggio include, dove rilevante, un camp
 
 | Categoria messaggio | QoS consigliato | Motivazione |
 |---|---|---|
-| Heartbeat / stato periodico | 0 | Periodico, la perdita di un singolo messaggio è ininfluente (il prossimo arriva comunque a breve) |
+| Heartbeat / stato periodico | 0 | Periodico, la perdita di un singolo messaggio è ininfluente (il prossimo arriva comunque a breve): la soglia di 3 intervalli usata da Node-RED tollera la perdita di un heartbeat isolato |
 | Eventi one-shot (NFC rilevato, partenza rilevata) | 1 | Eventi non ripetuti automaticamente — perderli significa perdere un dato reale non recuperabile |
 | Letture sensori periodiche (ambiente, RSSI) | 0 | Stesso ragionamento dell'heartbeat, il prossimo campionamento sostituisce il precedente |
 | Comandi verso i nodi (namespace `cmd/`) | 1 (minimo) | Un comando perso può lasciare il sistema in uno stato non voluto |
@@ -53,8 +53,8 @@ Il flag `retain` fa sì che il broker conservi l'ultimo messaggio pubblicato su 
 
 ### `tagliaerba/gateway/heartbeat`
 
-Pubblicato da: **Nodo Gateway**, subito dopo la connessione e poi intervalloS secondi (default 30, configurabile nel simulatore con INTERVALLO_HEARTBEAT_S)
-Sottoscritto da: Node-RED (dashboard "Gateway online/offline")
+Pubblicato da: **Nodo Gateway**, subito dopo la connessione e poi ogni `intervalloS` secondi (default 30, configurabile nel simulatore con `INTERVALLO_HEARTBEAT_S`)
+Sottoscritto da: Node-RED (logica di stato del gateway, vedi la sezione dedicata, e dashboard)
 QoS: 0 · Retain: No
 
 Non viene pubblicato mentre il client non è connesso al broker.
@@ -63,7 +63,8 @@ Payload:
 ```json
 {
   "status": "online",
-  "uptime": 1234
+  "uptime": 1234,
+  "intervalloS": 30
 }
 ```
 
@@ -71,9 +72,9 @@ Payload:
 |---|---|---|
 | `status` | string | Sempre `"online"` quando pubblicato |
 | `uptime` | number (intero ≥ 0) | Secondi trascorsi dall'ultimo avvio (nel simulatore: del processo; sull'ESP32: del dispositivo) |
-| `intervalloS` |	number (intero, 1-300) | Intervallo in secondi tra due heartbeat, quello effettivamente in uso dopo la validazione. Il firmware reale dovrà pubblicare lo stesso campo |
+| `intervalloS` | number (intero, 1-300) | Intervallo in secondi tra due heartbeat, quello **effettivamente in uso** dopo la validazione. Il firmware reale dovrà pubblicare lo stesso campo |
 
-Intervallo configurabile. INTERVALLO_HEARTBEAT_S è accettato solo se è una stringa di sole cifre decimali con valore compreso tra 1 e 300 (inclusi). Qualunque altro valore (assente, non numerico, negativo, decimale, fuori dai limiti) ripiega sul default di 30 s, con un avviso nei log se la variabile era presente.
+**Intervallo configurabile.** `INTERVALLO_HEARTBEAT_S` è accettato solo se è una stringa di sole cifre decimali con valore compreso tra 1 e 300 (inclusi). Qualunque altro valore (assente, non numerico, negativo, decimale, fuori dai limiti) ripiega sul default di 30 s, con un avviso nei log se la variabile era presente.
 
 ### `tagliaerba/gateway/status` *(Last Will and Testament)*
 
@@ -93,7 +94,7 @@ Payload:
 | `status` | string | `"offline"` (LWT, pubblicato dal broker per conto del client) oppure `"online"` (pubblicato dal Gateway dopo la connessione) |
 
 **Implementazione**: il simulatore Docker registra il Last Will alla connessione e pubblica `online` con retain e QoS 1; il comportamento è verificato anche contro un broker Mosquitto reale (disconnessione non pulita → `offline` retained).
-**Implementazione lato ESP32**: configurare con `client.setWill(topic, payload, qos, retain)` **prima** della chiamata a `client.connect()`, poi pubblicare `{"status":"online"}` su questo topic con retain attivo e QoS 1 subito dopo `client.connect()` (il retained `offline` resta sul broker finché qualcuno non lo sostituisce). **Da implementare nel firmware**: al momento il Gateway fisico non ha un LWT configurato, sull’assenza di heartbeat per più di 3 × intervalloS.
+**Implementazione lato ESP32**: configurare con `client.setWill(topic, payload, qos, retain)` **prima** della chiamata a `client.connect()`, poi pubblicare `{"status":"online"}` su questo topic con retain attivo e QoS 1 subito dopo `client.connect()` (il retained `offline` resta sul broker finché qualcuno non lo sostituisce). **Da implementare nel firmware**: al momento il Gateway fisico non ha un LWT configurato, quindi Node-RED può rilevare solo l'assenza di heartbeat per più di 3 × `intervalloS` (stato `sospetto`, vedi la sezione "Stato del gateway") e non porta mai lo stato a `offline`.
 
 ### `tagliaerba/base/nfc-rilevato`
 
@@ -157,13 +158,25 @@ QoS: 1 · Retain: No
 
 ## Stato del gateway (logica Node-RED)
 
-Stati: sconosciuto (iniziale), online, sospetto, offline.
+La logica sta nel modulo `logica/stato-gateway.js` (funzioni pure `creaEvento` e `applicaEvento`), caricato da Node-RED tramite `functionGlobalContext` e verificato da test unit e property-based in `logica/`. Il nodo function del flusso si limita a chiamarle e legge l'orologio con `Date.now()`.
 
-- Status offline (Last Will): porta sempre a offline.
-- Status online: porta a online e assume intervalloS = 300, perché l’intervallo reale non è ancora noto.
-- Heartbeat: da sconosciuto, online o sospetto porta a online e aggiorna intervalloS se il valore dichiarato è un intero tra 1 e 300 (altrimenti tiene il precedente). Da offline non cambia nulla: solo uno status online riporta online un gateway offline.
-- Controllo periodico: se lo stato è online e dall’ultimo contatto sono passati più di 3 × intervalloS secondi, lo stato diventa sospetto. A esattamente 3 intervalli è ancora online.
-- Limite noto: se Node-RED si riavvia con il gateway già acceso, riceve lo status online retained e usa 300 s (soglia 900 s) fino al primo heartbeat utile.
+**Stati**: `sconosciuto` (iniziale), `online`, `sospetto`, `offline`.
+
+**Eventi in ingresso**: messaggi su `tagliaerba/gateway/status`, messaggi su `tagliaerba/gateway/heartbeat` e un controllo periodico (nodo `inject` ogni 10 secondi, topic interno `controllo`). Qualunque altro topic viene ignorato, e un payload malformato non produce errori.
+
+**Regole**:
+
+- Status `offline` (Last Will): porta sempre a `offline`.
+- Status `online`: porta a `online` e assume `intervalloS` = 300, perché l'intervallo reale non è ancora noto.
+- Heartbeat: da `sconosciuto`, `online` o `sospetto` porta a `online` e aggiorna `intervalloS` se il valore dichiarato è un intero tra 1 e 300 (altrimenti tiene il precedente: il valore arriva da un messaggio MQTT e non è considerato attendibile). Da `offline` non cambia nulla: solo uno status `online` riporta online un gateway offline.
+- Controllo periodico: se lo stato è `online` e dall'ultimo contatto sono passati **più di** 3 × `intervalloS` secondi, lo stato diventa `sospetto`. A esattamente 3 intervalli è ancora `online`. Da `sconosciuto`, `sospetto` e `offline` il controllo non cambia lo stato.
+
+**Latenza di rilevamento**: il controllo gira ogni 10 secondi, quindi `sospetto` compare tra 3 × `intervalloS` e 3 × `intervalloS` + 10 secondi dopo l'ultimo heartbeat (con l'intervallo di default, da 90 a 100 secondi).
+
+**Limiti noti**:
+
+- Lo stato è tenuto in memoria (flow context): dopo un riavvio di Node-RED riparte da `sconosciuto`.
+- Se Node-RED si riavvia con il gateway già acceso, riceve lo status `online` retained e usa 300 s (soglia 900 s) fino al primo heartbeat utile.
 
 ---
 
@@ -257,7 +270,9 @@ Principio applicato: minimo privilegio per ruolo. Il `gateway` è l'unico client
 
 ## Verifica automatica
 
-Il contratto di questo schema è verificato da test in `docker/simulatore`: unit e property-based (topic, payload, QoS, retain, Last Will configurato, intervalli dei valori simulati), integrazione contro un Mosquitto reale con autenticazione (connessione, password errata, heartbeat, Last Will che scatta davvero, retained, comandi di simulazione) e smoke test del container. I test di integrazione possono essere riusati per il gateway reale.
+Il contratto di questo schema è verificato da test in `docker/simulatore`: unit e property-based (topic, payload, QoS, retain, Last Will configurato, validazione dell'intervallo di heartbeat, intervalli dei valori simulati), integrazione contro un Mosquitto reale con autenticazione (connessione, password errata, heartbeat, Last Will che scatta davvero, retained, comandi di simulazione) e smoke test del container. I test di integrazione possono essere riusati per il gateway reale.
+
+La logica dello stato del gateway (sezione "Stato del gateway") è verificata da test unit e property-based in `logica/` (job `test-logica` della CI).
 
 ---
 
