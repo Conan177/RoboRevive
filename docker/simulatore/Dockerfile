@@ -1,10 +1,7 @@
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
-COPY gateway.js ./
-COPY creaGateway.js ./
-COPY scenari.js ./
-COPY simulazione.js ./
-COPY risolviIntervalloS.js ./
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY gateway.js creaGateway.js scenari.js simulazione.js risolviIntervalloS.js ./
+USER node
 CMD ["node", "gateway.js"]
