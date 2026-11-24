@@ -1,8 +1,9 @@
 const fc = require('fast-check');
-const { applicaEvento, statoIniziale, creaEvento  } = require('./stato-gateway');
+const { applicaEvento, statoIniziale, creaEvento } = require('./stato-gateway');
 
-const proprietaValida = (proprieta, parametri) =>
-  expect(() => fc.assert(proprieta, parametri)).not.toThrow();
+// Convenzione: ogni proprietà contiene UNA expect. Se la expect fallisce lancia un
+// errore, fast-check lo intercetta, riduce il controesempio (shrinking) e lo riporta.
+// Attenzione: dentro le graffe una espressione booleana senza expect non verifica nulla.
 
 // --- Generatori di eventi ---------------------------------------------------
 const adesso = fc.integer({ min: 0, max: 1e12 });
@@ -30,72 +31,82 @@ const eventoNonStatus = fc.oneof(eventoHeartbeat, eventoControllo);
 const applicaTutti = (stato, eventi) =>
   eventi.reduce((corrente, evento) => applicaEvento(corrente, evento), stato);
 
+// --- Soglia dei 3 intervalli ------------------------------------------------
+// Per ogni intervallo valido, un controllo entro 3 intervalli non cambia nulla...
+const intervalloConDeltaEntro = fc.integer({ min: 1, max: 300 }).chain((i) =>
+  fc.tuple(fc.constant(i), fc.integer({ min: 0, max: 3 * i * 1000 }))
+);
+// ...e uno oltre i 3 intervalli porta a sospetto.
+const intervalloConDeltaOltre = fc.integer({ min: 1, max: 300 }).chain((i) =>
+  fc.tuple(fc.constant(i), fc.integer({ min: 3 * i * 1000 + 1, max: 3 * i * 1000 + 1_000_000 }))
+);
+
+const onlineConIntervallo = (intervalloS, t0) =>
+  applicaTutti(statoIniziale(), [
+    { tipo: 'status', status: 'online', adesso: t0 },
+    { tipo: 'heartbeat', intervalloS, adesso: t0 },
+  ]);
+
 describe('stato gateway (proprietà)', () => {
   test('dopo uno status offline, heartbeat e controlli non cambiano mai lo stato', () => {
     const offline = applicaEvento(statoIniziale(), { tipo: 'status', status: 'offline', adesso: 0 });
-    proprietaValida(
-      fc.property(fc.array(eventoNonStatus), (eventi) =>
-        applicaTutti(offline, eventi).stato === 'offline'
-      )
+    fc.assert(
+      fc.property(fc.array(eventoNonStatus), (eventi) => {
+        expect(applicaTutti(offline, eventi).stato).toBe('offline');
+      })
     );
   });
 
   test('l\'intervalloS nello stato è sempre un intero', () => {
-    proprietaValida(
-      fc.property(fc.array(eventoQualsiasi), (eventi) =>
-        Number.isInteger(applicaTutti(statoIniziale(), eventi).intervalloS)
-      )
+    fc.assert(
+      fc.property(fc.array(eventoQualsiasi), (eventi) => {
+        expect(Number.isInteger(applicaTutti(statoIniziale(), eventi).intervalloS)).toBe(true);
+      })
     );
   });
 
-  test('l\'intervalloS nello stato è sempre compreso tra 1 e 300', () => {
-    proprietaValida(
+  test('l\'intervalloS nello stato non è mai sotto il minimo di 1', () => {
+    fc.assert(
       fc.property(fc.array(eventoQualsiasi), (eventi) => {
-        const { intervalloS } = applicaTutti(statoIniziale(), eventi);
-        return intervalloS >= 1 && intervalloS <= 300;
+        expect(applicaTutti(statoIniziale(), eventi).intervalloS).toBeGreaterThanOrEqual(1);
+      })
+    );
+  });
+
+  test('l\'intervalloS nello stato non è mai sopra il massimo di 300', () => {
+    fc.assert(
+      fc.property(fc.array(eventoQualsiasi), (eventi) => {
+        expect(applicaTutti(statoIniziale(), eventi).intervalloS).toBeLessThanOrEqual(300);
       })
     );
   });
 
   test('applicaEvento non modifica mai lo stato ricevuto', () => {
-    proprietaValida(
+    fc.assert(
       fc.property(fc.array(eventoQualsiasi), eventoQualsiasi, (eventi, evento) => {
         const prima = applicaTutti(statoIniziale(), eventi);
         const copia = JSON.stringify(prima);
         applicaEvento(prima, evento);
-        return JSON.stringify(prima) === copia;
+        expect(JSON.stringify(prima)).toBe(copia);
       })
     );
   });
 
-  // Per ogni intervallo valido, un controllo entro 3 intervalli non cambia nulla...
-  const intervalloConDeltaEntro = fc.integer({ min: 1, max: 300 }).chain((i) =>
-    fc.tuple(fc.constant(i), fc.integer({ min: 0, max: 3 * i * 1000 }))
-  );
-  // ...e uno oltre i 3 intervalli porta a sospetto.
-  const intervalloConDeltaOltre = fc.integer({ min: 1, max: 300 }).chain((i) =>
-    fc.tuple(fc.constant(i), fc.integer({ min: 3 * i * 1000 + 1, max: 3 * i * 1000 + 1_000_000 }))
-  );
-
-  const onlineConIntervallo = (intervalloS, t0) =>
-    applicaTutti(statoIniziale(), [
-      { tipo: 'status', status: 'online', adesso: t0 },
-      { tipo: 'heartbeat', intervalloS, adesso: t0 },
-    ]);
-
   test('un controllo entro 3 intervalli dall\'ultimo contatto lascia lo stato online', () => {
-    proprietaValida(
-      fc.property(intervalloConDeltaEntro, adesso, ([i, delta], t0) =>
-        applicaEvento(onlineConIntervallo(i, t0), { tipo: 'controllo', adesso: t0 + delta }).stato === 'online'
-      )
+    fc.assert(
+      fc.property(intervalloConDeltaEntro, adesso, ([i, delta], t0) => {
+        const dopo = applicaEvento(onlineConIntervallo(i, t0), { tipo: 'controllo', adesso: t0 + delta });
+        expect(dopo.stato).toBe('online');
+      })
     );
   });
 
   test('un controllo oltre 3 intervalli dall\'ultimo contatto porta a sospetto', () => {
-    proprietaValida(
-      fc.property(intervalloConDeltaOltre, adesso, ([i, delta], t0) =>
-        applicaEvento(onlineConIntervallo(i, t0), { tipo: 'controllo', adesso: t0 + delta }).stato === 'sospetto'
-      )
+    fc.assert(
+      fc.property(intervalloConDeltaOltre, adesso, ([i, delta], t0) => {
+        const dopo = applicaEvento(onlineConIntervallo(i, t0), { tipo: 'controllo', adesso: t0 + delta });
+        expect(dopo.stato).toBe('sospetto');
+      })
     );
   });
 });
@@ -104,7 +115,7 @@ describe('stato gateway (proprietà)', () => {
 const TOPIC_STATUS = 'tagliaerba/gateway/status';
 const TOPIC_HEARTBEAT = 'tagliaerba/gateway/heartbeat';
 const TOPIC_CONTROLLO = 'controllo';
-const TIPI_VALIDI = ['status', 'heartbeat', 'controllo'];
+const RISULTATI_AMMESSI = [null, 'status', 'heartbeat', 'controllo'];
 
 // Topic: i tre noti (altrimenti fc.anything() non li pescherebbe quasi mai) più spazzatura.
 const topicQualsiasi = fc.oneof(
@@ -132,7 +143,7 @@ describe('creaEvento (proprietà)', () => {
     fc.assert(
       fc.property(topicQualsiasi, payloadQualsiasi, adesso, (topic, payload, t) => {
         const evento = creaEvento(topic, payload, t);
-        return evento === null || TIPI_VALIDI.includes(evento.tipo);
+        expect(RISULTATI_AMMESSI).toContain(evento?.tipo ?? null);
       })
     );
   });
@@ -144,9 +155,9 @@ describe('creaEvento (proprietà)', () => {
       [TOPIC_CONTROLLO, 'controllo']
     );
     fc.assert(
-      fc.property(coppie, payloadQualsiasi, adesso, ([topic, tipo], payload, t) =>
-        creaEvento(topic, payload, t).tipo === tipo
-      )
+      fc.property(coppie, payloadQualsiasi, adesso, ([topic, tipo], payload, t) => {
+        expect(creaEvento(topic, payload, t).tipo).toBe(tipo);
+      })
     );
   });
 });
@@ -164,17 +175,24 @@ const applicaMessaggi = (stato, messaggi) =>
 describe('messaggi grezzi e stato (proprietà)', () => {
   test('dopo qualunque sequenza di messaggi l\'intervalloS è un intero', () => {
     fc.assert(
-      fc.property(fc.array(messaggio), (messaggi) =>
-        Number.isInteger(applicaMessaggi(statoIniziale(), messaggi).intervalloS)
-      )
+      fc.property(fc.array(messaggio), (messaggi) => {
+        expect(Number.isInteger(applicaMessaggi(statoIniziale(), messaggi).intervalloS)).toBe(true);
+      })
     );
   });
 
-  test('dopo qualunque sequenza di messaggi l\'intervalloS è compreso tra 1 e 300', () => {
+  test('dopo qualunque sequenza di messaggi l\'intervalloS non è mai sotto 1', () => {
     fc.assert(
       fc.property(fc.array(messaggio), (messaggi) => {
-        const { intervalloS } = applicaMessaggi(statoIniziale(), messaggi);
-        return intervalloS >= 1 && intervalloS <= 300;
+        expect(applicaMessaggi(statoIniziale(), messaggi).intervalloS).toBeGreaterThanOrEqual(1);
+      })
+    );
+  });
+
+  test('dopo qualunque sequenza di messaggi l\'intervalloS non è mai sopra 300', () => {
+    fc.assert(
+      fc.property(fc.array(messaggio), (messaggi) => {
+        expect(applicaMessaggi(statoIniziale(), messaggi).intervalloS).toBeLessThanOrEqual(300);
       })
     );
   });

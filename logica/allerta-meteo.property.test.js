@@ -13,6 +13,24 @@ function costruisciOrari(n) {
     );
 }
 
+// Previsioni qualsiasi (anche fuori soglia), da 0 a 12 ore.
+const previsioniQualsiasi = (minLength) =>
+    fc.array(
+        fc.record({
+            temp: fc.double({ min: -20, max: 50, noNaN: true }),
+            pioggia: fc.double({ min: 0, max: 50, noNaN: true })
+        }),
+        { minLength, maxLength: 12 }
+    );
+
+// Esegue valutaCondizioni su un elenco di previsioni {temp, pioggia}.
+function valuta(valori) {
+    const orari = costruisciOrari(valori.length);
+    const temperature = valori.map(v => v.temp);
+    const pioggia = valori.map(v => v.pioggia);
+    return valutaCondizioni(orari, temperature, pioggia, adesso);
+}
+
 test('property: nessuna allerta se tutti i valori sono entro le soglie', () => {
     fc.assert(
         fc.property(
@@ -24,12 +42,7 @@ test('property: nessuna allerta se tutti i valori sono entro le soglie', () => {
                 { minLength: 1, maxLength: 12 }
             ),
             (valori) => {
-                const orari = costruisciOrari(valori.length);
-                const temperature = valori.map(v => v.temp);
-                const pioggia = valori.map(v => v.pioggia);
-
-                const risultato = valutaCondizioni(orari, temperature, pioggia, adesso);
-                return risultato.condizioniOk === true;
+                expect(valuta(valori).condizioniOk).toBe(true);
             }
         )
     );
@@ -49,7 +62,7 @@ test('property: pioggia sopra soglia genera sempre allerta', () => {
                 pioggia[indice] = valorePioggia;
 
                 const risultato = valutaCondizioni(orari, temperature, pioggia, adesso);
-                return risultato.condizioniOk === false;
+                expect(risultato.condizioniOk).toBe(false);
             }
         )
     );
@@ -57,47 +70,27 @@ test('property: pioggia sopra soglia genera sempre allerta', () => {
 
 test('property: condizioniOk è coerente con la lunghezza di motivi', () => {
     fc.assert(
-        fc.property(
-            fc.array(
-                fc.record({
-                    temp: fc.double({ min: -20, max: 50, noNaN: true }),
-                    pioggia: fc.double({ min: 0, max: 50, noNaN: true })
-                }),
-                { minLength: 1, maxLength: 12 }
-            ),
-            (valori) => {
-                const orari = costruisciOrari(valori.length);
-                const temperature = valori.map(v => v.temp);
-                const pioggia = valori.map(v => v.pioggia);
-
-                const risultato = valutaCondizioni(orari, temperature, pioggia, adesso);
-                return risultato.condizioniOk === (risultato.motivi.length === 0);
-            }
-        )
+        fc.property(previsioniQualsiasi(1), (valori) => {
+            const risultato = valuta(valori);
+            expect(risultato.condizioniOk).toBe(risultato.motivi.length === 0);
+        })
     );
 });
 
-test('property: finestraOraria, temperature e pioggia in output hanno sempre pari lunghezza', () => {
+test('property: finestraOraria e temperature in output hanno sempre pari lunghezza', () => {
     fc.assert(
-        fc.property(
-            fc.array(
-                fc.record({
-                    temp: fc.double({ min: -20, max: 50, noNaN: true }),
-                    pioggia: fc.double({ min: 0, max: 50, noNaN: true })
-                }),
-                { minLength: 0, maxLength: 12 }
-            ),
-            (valori) => {
-                const orari = costruisciOrari(valori.length);
-                const temperature = valori.map(v => v.temp);
-                const pioggia = valori.map(v => v.pioggia);
+        fc.property(previsioniQualsiasi(0), (valori) => {
+            const risultato = valuta(valori);
+            expect(risultato.finestraOraria.length).toBe(risultato.temperature.length);
+        })
+    );
+});
 
-                const risultato = valutaCondizioni(orari, temperature, pioggia, adesso);
-                return (
-                    risultato.finestraOraria.length === risultato.temperature.length &&
-                    risultato.temperature.length === risultato.pioggia.length
-                );
-            }
-        )
+test('property: temperature e pioggia in output hanno sempre pari lunghezza', () => {
+    fc.assert(
+        fc.property(previsioniQualsiasi(0), (valori) => {
+            const risultato = valuta(valori);
+            expect(risultato.temperature.length).toBe(risultato.pioggia.length);
+        })
     );
 });
