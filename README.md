@@ -41,6 +41,9 @@ Dettagli completi di setup e note tecniche: [`docs/fase0-setup-mqtt-nodered.md`]
 ├── base-node/               # sketch ESP32 Base (NFC, sensori ambientali)
 ├── robot-node/               # sketch ESP32 Robot (microfono, eventuale tag NFC)
 └── node-red-flows/          # export JSON dei flussi Node-RED
+├── docker/                  # Mosquitto, Node-RED e simulatore del gateway (deployment di valutazione)
+├── logica/                  # logica di Node-RED testata (allerta meteo, stato del gateway)
+├── .github/workflows/       # pipeline CI/CD
 ```
 
 ## Requisiti
