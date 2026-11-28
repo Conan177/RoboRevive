@@ -99,9 +99,6 @@ describe('periodo del timer di heartbeat', () => {
     expect(spy).toHaveBeenCalledWith(expect.any(Function), atteso);
   });
 
-  // Documenta il comportamento attuale: nessuna validazione dell'intervallo.
-  // Un delay negativo viene poi trattato da Node come 1 ms (heartbeat continui):
-  // possibile bug, vedi report. Il timer finto non viene fatto avanzare di proposito.
   test('con intervalloS negativo il timer usa il default di 30 s', () => {
     const spy = jest.spyOn(global, 'setInterval');
     avviaGateway({ intervalloS: -5 });

@@ -1,16 +1,12 @@
-// ⚠️ Se i test sono in una sottocartella, aggiorna SOLO queste tre righe di import
-// (es. '../creaGateway' e '../test-utils/clientFinto').
 const fc = require('fast-check');
 const { creaGateway } = require('./creaGateway');
 const { creaMqttFinto } = require('./test-utils/clientFinto');
 
 const TOPIC_HEARTBEAT = 'tagliaerba/gateway/heartbeat';
 
-// Esegue la proprietà e fallisce (mostrando il controesempio ridotto da fast-check)
-// se esiste almeno un input che la viola. È l'unica asserzione di ogni test.
-const proprietaValida = (proprieta, parametri) =>
-  expect(() => fc.assert(proprieta, parametri)).not.toThrow();
-
+// Convenzione: ogni proprietà contiene UNA expect. Se fallisce lancia un errore,
+// fast-check lo intercetta, riduce il controesempio e lo riporta con il messaggio di Jest.
+// Attenzione: dentro le graffe una espressione booleana senza expect non verifica nulla.
 
 // ---------------------------------------------------------------------------
 // pubblicaHeartbeat
@@ -40,35 +36,45 @@ describe('heartbeat (proprietà)', () => {
   }
 
   test('l\'uptime pubblicato è sempre un intero', () => {
-    proprietaValida(
-      fc.property(uptimeArbitrario, (u) => Number.isInteger(payloadHeartbeatConUptime(u).uptime))
+    fc.assert(
+      fc.property(uptimeArbitrario, (u) => {
+        expect(Number.isInteger(payloadHeartbeatConUptime(u).uptime)).toBe(true);
+      })
     );
   });
 
   test('l\'uptime pubblicato non è mai negativo', () => {
-    proprietaValida(
-      fc.property(uptimeArbitrario, (u) => payloadHeartbeatConUptime(u).uptime >= 0)
+    fc.assert(
+      fc.property(uptimeArbitrario, (u) => {
+        expect(payloadHeartbeatConUptime(u).uptime).toBeGreaterThanOrEqual(0);
+      })
     );
   });
 
   test('l\'uptime pubblicato non supera mai il valore di process.uptime()', () => {
-    proprietaValida(
-      fc.property(uptimeArbitrario, (u) => payloadHeartbeatConUptime(u).uptime <= u)
+    fc.assert(
+      fc.property(uptimeArbitrario, (u) => {
+        expect(payloadHeartbeatConUptime(u).uptime).toBeLessThanOrEqual(u);
+      })
     );
   });
 
+  // Le chiavi sono confrontate in ordine alfabetico (.sort()).
   test('il payload contiene sempre e solo le chiavi status, uptime e intervalloS', () => {
-    proprietaValida(
-      fc.property(uptimeArbitrario, (u) =>
-        Object.keys(payloadHeartbeatConUptime(u)).sort().join(',') ===
-        ['status', 'uptime', 'intervalloS'].sort().join(',')
-      )
+    fc.assert(
+      fc.property(uptimeArbitrario, (u) => {
+        expect(Object.keys(payloadHeartbeatConUptime(u)).sort()).toEqual(
+          ['intervalloS', 'status', 'uptime']
+        );
+      })
     );
   });
 
   test('il payload ha sempre status online', () => {
-    proprietaValida(
-      fc.property(uptimeArbitrario, (u) => payloadHeartbeatConUptime(u).status === 'online')
+    fc.assert(
+      fc.property(uptimeArbitrario, (u) => {
+        expect(payloadHeartbeatConUptime(u).status).toBe('online');
+      })
     );
   });
 
@@ -78,7 +84,7 @@ describe('heartbeat (proprietà)', () => {
   test('i publish di heartbeat sono esattamente i tick avvenuti a client connesso', () => {
     const sequenze = fc.array(fc.constantFrom('connetti', 'disconnetti', 'tick'), { maxLength: 40 });
 
-    proprietaValida(
+    fc.assert(
       fc.property(sequenze, (sequenza) => {
         const { client, mqttLib } = creaMqttFinto();
         const gateway = creaGateway({ host: 'h', password: 'p', intervalloS: 1, mqttLib });
@@ -95,7 +101,7 @@ describe('heartbeat (proprietà)', () => {
 
         gateway.stop();
         const effettivi = client.publish.mock.calls.filter(([t]) => t === TOPIC_HEARTBEAT).length;
-        return effettivi === attesi;
+        expect(effettivi).toBe(attesi);
       })
     );
   });
@@ -131,15 +137,20 @@ describe('intervallo passato a setInterval (proprietà)', () => {
     return spiaSetInterval.mock.calls[0][1];
   }
 
+  // Valori in chiaro (1 s e 300 s), non letti dal sorgente: sono un contratto.
   test('setInterval non riceve mai meno del minimo', () => {
-    proprietaValida(
-      fc.property(inputQualsiasi, (x) => msPassatiASetInterval(x) >= 1000)
+    fc.assert(
+      fc.property(inputQualsiasi, (x) => {
+        expect(msPassatiASetInterval(x)).toBeGreaterThanOrEqual(1000);
+      })
     );
   });
 
   test('setInterval non riceve mai più del massimo', () => {
-    proprietaValida(
-      fc.property(inputQualsiasi, (x) => msPassatiASetInterval(x) <= 300000)
+    fc.assert(
+      fc.property(inputQualsiasi, (x) => {
+        expect(msPassatiASetInterval(x)).toBeLessThanOrEqual(300000);
+      })
     );
   });
 });
