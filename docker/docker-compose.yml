@@ -36,6 +36,7 @@ services:
     restart: unless-stopped
   
   simulatore:
+    image: ghcr.io/conan177/roborevive-simulatore:${SIMULATORE_VERSIONE:-1.0.0} 
     build: ./simulatore
     container_name: roborevive-simulatore
     env_file: .env
